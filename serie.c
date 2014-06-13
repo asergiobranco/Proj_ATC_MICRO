@@ -5,20 +5,11 @@
 /* Function to initialize the serial port and the UART baudrate.
 *------------------------------------------------------------------------------*/
 void com_initialize (int baudrate){	
-// Configure timer 1 as a baud rate generator
-//	PCON |= 0x80; // 0x80=SMOD: set serial baudrate doubler
-//	TMOD |= 0x20; // put timer 1 into MODE 2
-//	TH1 = (unsigned char) (256 - (XTAL / (16L * 12L * baudrate)));
-//	TL1 = TH1;
-//	TR1 = 1; // start timer 1
-//	SCON = 0x50; // serial port MODE 1, enable serial receiver
-//	ES = 1; // enable serial interrupts
 
 	CKCON0 = 0x7F;
 	SCON = 0x50; /* uart in mode 1 (8 bit), REN=1 */
 	BDRCON &= 0xEE; /* BRR=0; SRC=0; */
 	BDRCON |= 0x0E; /* TBCK=1;RBCK=1; SPD=1 *///(TBCK=1 e RBCK=1 -> gerador de baudrate interno para Transmitir e Receber)(SPD=1 para baudrate altos)
-	//spd = BDRCON & 2;
 	BRL = 256 - ((2 * XTAL)/(4L*16L*baudrate));//4L??16L???
 	//BRL=0xD9; /* 9600 Bds at 12MHz */
 	ES = 1; /* Enable serial interrupt*/
@@ -62,21 +53,7 @@ static void com_isr (void) interrupt 4 using 1
 		}
 	}
 }
- /*--------------------------------------------------------------------------------
-* Checks if input buffer is empty
-*------------------------------------------------------------------------------*/
- bit inb_empty()
- {
- 	return ( iend == istart);
- }
- /*--------------------------------------------------------------------------------
-* Checks if output buffer is empty
-*------------------------------------------------------------------------------*/
- bit outb_empty()
- {
- 	return ( oend == ostart);
- }
-/*--------------------------------------------------------------------------------
+/*------------------------------------------------------------------------------
 * Replacement routine for the standard library _getkey routine.
 * The getchar and gets functions uses _getkey to read a character.
 *------------------------------------------------------------------------------*/
