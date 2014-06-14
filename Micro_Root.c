@@ -10,9 +10,9 @@ bit spi_transmit_completed;
 unsigned char SPI_data;
 
 /* TWI */ 
-bit rw = 1;
+bit rw = 0;
 bit b_TWI_busy;
-signed char slave_adr;
+signed char slave_adr = 0x55;
 unsigned char TWI_data;
 
 /*GAME*/
@@ -32,7 +32,7 @@ void main()
 {			
 	init();
 	while(1){
-		printf("READY?!\n");
+		printf("\nREADY?!\n");
 		_getkey();
 		printf("\nGAME ON!!\n\n");
 		TR2 = b_game_running = 1;
@@ -100,11 +100,22 @@ void set_GameTimer()
 
 void EndGame()
 {
-	if(P1_Counter != P2_Counter){
-		TWI_data = (P1_Counter > P2_Counter) ? vec[1] : vec[2];
+	int winner;
+	SPCON &= ~0x40; //cut controller connection
+	if( P1_Counter != P2_Counter){
+		winner = (P1_Counter > P2_Counter) ? 1 : 2;
+		printf("\nGanhou P%d!!", winner);
+	} else{
+		printf("\nEmpate!");
+		winner = 0;
 	}
-	else TWI_data =	vec[0];
+
+	TWI_data =	vec[winner];
+	b_TWI_busy = 1;
 	SSCON |= 0x20; //Start Condition
+	while(b_TWI_busy);
+
+	SPCON |= 0x40; //reconnect controller
 }
 
 
@@ -124,16 +135,11 @@ void it_TWI(void) interrupt 8
 {
 	switch(SSCS)                     /* TWI status tasking */
 	{
-      case(0x00):                /* A start condition has been sent */
-      {                          /* SLR+R/W are transmitted, ACK bit received */
-	      b_TWI_busy=0;              /* TWI is free */
-	      break;
-      }
       case(0x08):                /* A start condition has been sent */
       {                          /* SLR+R/W are transmitted, ACK bit received */
 	      SSCON &= ~0x20;            /* clear start condition */
 	      SSDAT = (slave_adr<<1)|rw; /* send slave adress and read/write bit */
-	      SSCON |= 0x04;             /* set AA */
+		  //P1 = vec[0];
 	      break;
       }
 
@@ -141,14 +147,14 @@ void it_TWI(void) interrupt 8
       {                          /* SLR+R/W are transmitted, ACK bit received */
 	      SSCON &= ~0x20;            /* clear start condition */
 	      SSDAT = (slave_adr<<1)|rw; /* send slave adress and read/write bit */
-	      SSCON |= 0x04;             /* set AA */
+		  //P1 = vec[1];
 	      break;
       }
 
       case(0x18):                /* SLR+W was transmitted, ACK bit received */
       {
 	      SSDAT = TWI_data;          /* Transmit data byte, ACK bit received */
-	      SSCON |= 0x04;             /* set AA */
+	      //P1 = vec[2];
 	      break;
       }
 
@@ -156,6 +162,7 @@ void it_TWI(void) interrupt 8
       {
 	      SSCON |= 0x10;             /* Transmit STOP */
 	      b_TWI_busy=0;              /* TWI is free */
+		  //P1 = vec[3];
 	      break;
       }
 
@@ -163,6 +170,7 @@ void it_TWI(void) interrupt 8
       {
 	      SSCON |= 0x10;             /* send STOP */
 	      b_TWI_busy=0;              /* TWI is free */
+		  //P1 = vec[4];
 	      break;
       }
 
@@ -170,6 +178,7 @@ void it_TWI(void) interrupt 8
       {
 	      SSCON |= 0x10;             /* Transmit STOP */
 	      b_TWI_busy=0;              /* TWI is free */
+		  //P1 = vec[5];
 	      break;
       }
 
@@ -177,6 +186,7 @@ void it_TWI(void) interrupt 8
       {
 	      SSCON |= 0x10;             /* Transmit STOP */
 	      b_TWI_busy=0;              /* TWI is free */
+		  //P1 = vec[6];
 	      break;
       }
 	}
@@ -187,7 +197,7 @@ void GameTimer_isr() interrupt 5
 {
 	static counter = 0;
 	
-	if(counter++ == 20 * 10){
+	if(counter++ == 20 * 1){   //5sec
 		 counter = 0;
 		 b_game_running = 0;
 		 TR2 = 0;
